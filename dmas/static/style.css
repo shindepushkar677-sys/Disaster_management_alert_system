@@ -1,0 +1,3 @@
+.resolved-marker {
+    filter: hue-rotate(90deg); /* makes the marker green-ish */
+}

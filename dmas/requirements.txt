@@ -1,0 +1,7 @@
+tk
+flask
+flask-socketio
+eventlet
+flask-mail
+flask-login
+

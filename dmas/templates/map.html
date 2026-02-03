@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Disaster Management Map</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            position: relative;
+        }
+        
+        .header h2 { 
+            margin: 0; 
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 14px;
+        }
+        
+        .btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid white;
+            padding: 8px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn:hover {
+            background: white;
+            color: #667eea;
+            transform: translateY(-2px);
+        }
+        
+        #map { 
+            height: calc(100vh - 60px); 
+            width: 100vw;
+            background: #aadaff;
+        }
+        
+        .info-box {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+            max-width: 300px;
+        }
+        
+        .info-box h3 {
+            margin: 0 0 15px 0;
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .info-box p {
+            margin: 10px 0;
+            line-height: 1.6;
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .close-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .stats-box {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+            min-width: 200px;
+        }
+        
+        .stats-box h3 {
+            margin: 0 0 15px 0;
+            color: #667eea;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 8px;
+            background: #f5f5f5;
+            border-radius: 6px;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            right: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .legend h4 { margin: 0 0 12px 0; }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+        
+        .legend-marker {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 2px solid rgba(0,0,0,0.2);
+        }
+        
+        .marker-active { background: #f44336; }
+        .marker-resolved { background: #4CAF50; }
+        
+        .leaflet-popup-content {
+            margin: 15px;
+            min-width: 220px;
+        }
+        
+        .popup-header {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .popup-desc {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+        
+        .popup-buttons {
+            margin-top: 15px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .popup-btn {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            flex: 1;
+        }
+        
+        .btn-resolve {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-resolve:hover {
+            background: #45a049;
+        }
+        
+        .btn-remove {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-remove:hover {
+            background: #da190b;
+        }
+        
+        .resolved-badge {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+        
+        .login-prompt {
+            background: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            text-align: center;
+            border-bottom: 2px solid #ffc107;
+        }
+        
+        .debug-console {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            background: rgba(0,0,0,0.85);
+            color: #0f0;
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 400px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            font-family: monospace;
+            font-size: 11px;
+            display: none;
+        }
+        
+        .debug-console.show {
+            display: block;
+        }
+    </style>
+</head>
+<body data-authenticated="{{ is_authenticated|tojson }}">
+    <!-- Header -->
+    <div class="header">
+        <h2>
+            <span>🚨</span>
+            <span>Disaster Management Dashboard</span>
+        </h2>
+        <div class="user-info">
+            {% if is_authenticated %}
+                <span>👤 {{ username }}</span>
+                <a href="/logout" class="btn">Logout</a>
+            {% else %}
+                <span>👤 Guest (View Only)</span>
+                <a href="/login" class="btn">Login</a>
+                <a href="/register" class="btn">Register</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Guest Notice -->
+    {% if not is_authenticated %}
+    <div class="login-prompt">
+        ⚠️ You are viewing as a guest. <a href="/login" style="color:#667eea; font-weight:bold;">Login</a> or <a href="/register" style="color:#667eea; font-weight:bold;">Register</a> to add/manage alerts.
+    </div>
+    {% endif %}
+
+    <!-- Instructions -->
+    <div class="info-box" id="infoBox">
+        <button class="close-info" onclick="document.getElementById('infoBox').style.display='none'">×</button>
+        <h3>📌 How to Use</h3>
+        {% if is_authenticated %}
+        <p><strong>🗺️ Add Alert:</strong> Click anywhere on map</p>
+        <p><strong>📍 View:</strong> Click markers</p>
+        <p><strong>✅ Resolve:</strong> Green button</p>
+        <p><strong>🗑️ Remove:</strong> Red button</p>
+        {% else %}
+        <p><strong>🔒 Login required</strong> to add or manage alerts</p>
+        <p><strong>📍 View alerts:</strong> Click any marker</p>
+        {% endif %}
+    </div>
+
+    <!-- Statistics -->
+    <div class="stats-box">
+        <h3>📊 Statistics</h3>
+        <div class="stat-item">
+            <span>Active Alerts</span>
+            <span id="activeCount" style="font-weight:bold; color:#f44336;">0</span>
+        </div>
+        <div class="stat-item">
+            <span>Resolved</span>
+            <span id="resolvedCount" style="font-weight:bold; color:#4CAF50;">0</span>
+        </div>
+        <div class="stat-item">
+            <span>Total</span>
+            <span id="totalCount" style="font-weight:bold;">0</span>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+        <h4>Legend</h4>
+        <div class="legend-item">
+            <div class="legend-marker marker-active"></div>
+            <span>Active Alert</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-marker marker-resolved"></div>
+            <span>Resolved</span>
+        </div>
+    </div>
+
+    <!-- Debug Console -->
+    <div class="debug-console" id="debugConsole"></div>
+
+    <!-- Map -->
+    <div id="map"></div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        // Debug logger
+        const debugConsole = document.getElementById('debugConsole');
+        function debugLog(msg, isError = false) {
+            console.log(msg);
+            const color = isError ? '#f44' : '#0f0';
+            debugConsole.innerHTML += `<div style="color:${color}">${new Date().toLocaleTimeString()}: ${msg}</div>`;
+            debugConsole.scrollTop = debugConsole.scrollHeight;
+            debugConsole.classList.add('show');
+        }
+
+        const isAuthenticated = JSON.parse(document.body.getAttribute('data-authenticated') || 'false');
+        debugLog('🚀 App started. Auth: ' + isAuthenticated);
+        
+        // Initialize map with world view
+        var map = L.map('map', {
+            center: [20, 0],
+            zoom: 2,
+            minZoom: 2,
+            maxZoom: 18,
+            worldCopyJump: true
+        });
+
+        // Add tile layer
+        let tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19,
+            subdomains: ['a', 'b', 'c']
+        }).addTo(map);
+
+        var markers = {};
+        var stats = { active: 0, resolved: 0, total: 0 };
+
+        // Custom icons
+        function createMarkerIcon(isResolved) {
+            return L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-' + (isResolved ? 'green' : 'red') + '.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+        }
+
+        function updateStats() {
+            document.getElementById('activeCount').textContent = stats.active;
+            document.getElementById('resolvedCount').textContent = stats.resolved;
+            document.getElementById('totalCount').textContent = stats.total;
+        }
+
+        function createPopupContent(alert) {
+            const resolvedBadge = alert.resolved ? '<span class="resolved-badge">✓ RESOLVED</span>' : '';
+            const timestamp = alert.timestamp ? `<div style="font-size:12px; color:#888;">📅 ${alert.timestamp}</div>` : '';
+            
+            let buttons = '';
+            if (isAuthenticated) {
+                if (alert.resolved) {
+                    buttons = `<div class="popup-buttons">
+                        <button class="popup-btn btn-remove" data-id="${alert.id}">🗑️ Remove</button>
+                    </div>`;
+                } else {
+                    buttons = `<div class="popup-buttons">
+                        <button class="popup-btn btn-resolve" data-id="${alert.id}">✅ Resolve</button>
+                        <button class="popup-btn btn-remove" data-id="${alert.id}">🗑️ Remove</button>
+                    </div>`;
+                }
+            }
+            
+            return `
+                <div class="popup-header">${alert.type} ${resolvedBadge}</div>
+                <div class="popup-desc">${alert.desc}</div>
+                ${timestamp}
+                ${buttons}
+            `;
+        }
+
+        function addMarker(alert) {
+            const icon = createMarkerIcon(alert.resolved);
+            let marker = L.marker([alert.lat, alert.lng], { icon: icon }).addTo(map);
+            
+            marker.bindPopup(createPopupContent(alert), { maxWidth: 300 });
+            markers[alert.id] = marker;
+            
+            stats.total++;
+            if (alert.resolved) stats.resolved++;
+            else stats.active++;
+            updateStats();
+
+            marker.on('popupopen', function() {
+                if (isAuthenticated) setupPopupButtons(alert);
+            });
+        }
+
+        function setupPopupButtons(alert) {
+            const resolveBtn = document.querySelector('.btn-resolve[data-id="'+alert.id+'"]');
+            if (resolveBtn) {
+                resolveBtn.onclick = () => markAsResolved(alert.id);
+            }
+            
+            const removeBtn = document.querySelector('.btn-remove[data-id="'+alert.id+'"]');
+            if (removeBtn) {
+                removeBtn.onclick = () => {
+                    if (confirm("Remove this alert?")) removeAlert(alert.id);
+                };
+            }
+        }
+
+        function markAsResolved(alertId) {
+            debugLog('Marking alert as resolved: ' + alertId);
+            fetch('/mark_resolved', {
+                method: "POST",
+                headers: {'Content-Type': 'application/json'},
+                credentials: "include",
+                body: JSON.stringify({id: alertId})
+            })
+            .then(r => {
+                debugLog('Resolve response: ' + r.status);
+                if (!r.ok) throw new Error('Status ' + r.status);
+                return r.json();
+            })
+            .then(data => {
+                debugLog('✅ Alert resolved');
+                
+                // Update marker immediately
+                let marker = markers[alertId];
+                if(marker) {
+                    marker.setIcon(createMarkerIcon(true));
+                    marker.closePopup();
+                    stats.active--;
+                    stats.resolved++;
+                    updateStats();
+                }
+            })
+            .catch(err => {
+                debugLog('❌ Resolve failed: ' + err.message, true);
+                alert('Failed to resolve: ' + err.message);
+            });
+        }
+
+        function removeAlert(alertId) {
+            debugLog('Removing alert: ' + alertId);
+            fetch('/remove_alert', {
+                method: "POST",
+                headers: {'Content-Type': 'application/json'},
+                credentials: "include",
+                body: JSON.stringify({id: alertId})
+            })
+            .then(r => {
+                debugLog('Remove response: ' + r.status);
+                if (!r.ok) throw new Error('Status ' + r.status);
+                return r.json();
+            })
+            .then(data => {
+                debugLog('✅ Alert removed');
+                
+                // Remove marker immediately
+                let marker = markers[alertId];
+                if(marker) {
+                    map.removeLayer(marker);
+                    delete markers[alertId];
+                    stats.total--;
+                    stats.active--;
+                    updateStats();
+                }
+            })
+            .catch(err => {
+                debugLog('❌ Remove failed: ' + err.message, true);
+                alert('Failed to remove: ' + err.message);
+            });
+        }
+
+        // Load existing alerts
+        debugLog('Loading existing alerts...');
+        fetch('/get_alerts', {credentials: "include"})
+            .then(r => r.json())
+            .then(alerts => {
+                debugLog('✅ Loaded ' + alerts.length + ' alerts');
+                alerts.forEach(addMarker);
+            })
+            .catch(err => {
+                debugLog('❌ Failed to load alerts: ' + err.message, true);
+            });
+
+        // Add alert on map click (only if authenticated)
+        map.on('click', function(e) {
+            debugLog('Map clicked at: ' + e.latlng.lat + ', ' + e.latlng.lng);
+            
+            if (!isAuthenticated) {
+                debugLog('❌ User not authenticated', true);
+                alert('Please login to add alerts');
+                return;
+            }
+            
+            const type = prompt("Disaster type (Flood, Fire, Earthquake, etc.):");
+            if (!type || type.trim() === '') {
+                debugLog('Cancelled - no type entered');
+                return;
+            }
+            
+            const desc = prompt("Description:");
+            if (!desc || desc.trim() === '') {
+                debugLog('Cancelled - no description entered');
+                return;
+            }
+
+            const alertData = {
+                type: type.trim(),
+                desc: desc.trim(),
+                lat: e.latlng.lat,
+                lng: e.latlng.lng
+            };
+
+            debugLog('📤 Sending alert: ' + JSON.stringify(alertData));
+
+            fetch('/add_alert', {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: "include",
+                body: JSON.stringify(alertData)
+            })
+            .then(response => {
+                debugLog('📥 Response status: ' + response.status);
+                
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.message || 'Server error');
+                    }).catch(jsonErr => {
+                        throw new Error('HTTP ' + response.status);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                debugLog('📥 Response: ' + JSON.stringify(data));
+                if(data.status === "ok") {
+                    debugLog('✅ Alert added! ID: ' + data.id);
+                    
+                    // Add marker immediately (don't wait for WebSocket)
+                    const newAlert = {
+                        ...alertData,
+                        id: data.id,
+                        resolved: false,
+                        timestamp: new Date().toLocaleString()
+                    };
+                    addMarker(newAlert);
+                    
+                } else {
+                    throw new Error(data.message || 'Unexpected response');
+                }
+            })
+            .catch(err => {
+                debugLog('❌ ERROR: ' + err.message, true);
+                alert('Failed to add alert: ' + err.message);
+            });
+        });
+
+        // WebSocket for real-time updates
+        var socket = io();
+
+        socket.on('connect', () => {
+            debugLog('✓ WebSocket connected');
+        });
+
+        socket.on('connect_error', (error) => {
+            debugLog('❌ WebSocket error: ' + error.message, true);
+        });
+
+        socket.on('new_alert', function(alert){
+            debugLog('🔔 New alert received: ' + alert.type);
+            
+            // Only add if marker doesn't already exist (avoid duplicates)
+            if (!markers[alert.id]) {
+                addMarker(alert);
+                
+                if(Notification.permission === "granted") {
+                    new Notification("🚨 " + alert.type + " Alert", {
+                        body: alert.desc
+                    });
+                }
+            }
+        });
+
+        socket.on('alert_resolved', function(data){
+            debugLog('🔔 Alert resolved: ' + data.id);
+            let marker = markers[data.id];
+            if(marker) {
+                marker.setIcon(createMarkerIcon(true));
+                fetch('/get_alerts')
+                    .then(r => r.json())
+                    .then(alerts => {
+                        const alert = alerts.find(a => a.id === data.id);
+                        if (alert) marker.setPopupContent(createPopupContent(alert));
+                    });
+                stats.active--;
+                stats.resolved++;
+                updateStats();
+            }
+        });
+
+        socket.on('remove_alert', function(data){
+            debugLog('🔔 Alert removed: ' + data.id);
+            let marker = markers[data.id];
+            if(marker) {
+                map.removeLayer(marker);
+                delete markers[data.id];
+                stats.total--;
+                updateStats();
+            }
+        });
+
+        // Request notification permission
+        if(Notification.permission !== "granted" && Notification.permission !== "denied") {
+            Notification.requestPermission();
+        }
+
+        debugLog('🗺️ Map initialized successfully');
+    </script>
+</body>
+</html>
